@@ -224,6 +224,313 @@ void ImageEdits::adjust_brightness(int amount)
         raise_warning_message();
 }
 
+void ImageEdits::apply_blur(int amount)
+{
+    if (image != nullptr && type == "P3")
+    {
+        // Create a temporary image to store the blurred result
+        RGB** blurred_image = new RGB*[height];
+        for (int i = 0; i < height; i++)
+        {
+            blurred_image[i] = new RGB[width];
+        }
+
+        // Calculate the blur radius
+        int blur_radius = amount;
+
+        // Create an integral image to compute sums efficiently
+        int** integral_red = new int*[height];
+        int** integral_green = new int*[height];
+        int** integral_blue = new int*[height];
+
+        for (int i = 0; i < height; i++)
+        {
+            integral_red[i] = new int[width]();
+            integral_green[i] = new int[width]();
+            integral_blue[i] = new int[width]();
+        }
+
+        // Initialize the integral image with the first row and column
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                integral_red[i][j] = image[i][j].red;
+                integral_green[i][j] = image[i][j].green;
+                integral_blue[i][j] = image[i][j].blue;
+
+                if (i > 0)
+                {
+                    integral_red[i][j] += integral_red[i - 1][j];
+                    integral_green[i][j] += integral_green[i - 1][j];
+                    integral_blue[i][j] += integral_blue[i - 1][j];
+                }
+
+                if (j > 0)
+                {
+                    integral_red[i][j] += integral_red[i][j - 1];
+                    integral_green[i][j] += integral_green[i][j - 1];
+                    integral_blue[i][j] += integral_blue[i][j - 1];
+                }
+
+                if (i > 0 && j > 0)
+                {
+                    integral_red[i][j] -= integral_red[i - 1][j - 1];
+                    integral_green[i][j] -= integral_green[i - 1][j - 1];
+                    integral_blue[i][j] -= integral_blue[i - 1][j - 1];
+                }
+            }
+        }
+
+        // Apply blur to each pixel using the integral image
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                int x1 = max(0, j - blur_radius);
+                int y1 = max(0, i - blur_radius);
+                int x2 = min(width - 1, j + blur_radius);
+                int y2 = min(height - 1, i + blur_radius);
+
+                int total_red = integral_red[y2][x2];
+                int total_green = integral_green[y2][x2];
+                int total_blue = integral_blue[y2][x2];
+
+                if (x1 > 0)
+                {
+                    total_red -= integral_red[y2][x1 - 1];
+                    total_green -= integral_green[y2][x1 - 1];
+                    total_blue -= integral_blue[y2][x1 - 1];
+                }
+
+                if (y1 > 0)
+                {
+                    total_red -= integral_red[y1 - 1][x2];
+                    total_green -= integral_green[y1 - 1][x2];
+                    total_blue -= integral_blue[y1 - 1][x2];
+                }
+
+                if (x1 > 0 && y1 > 0)
+                {
+                    total_red += integral_red[y1 - 1][x1 - 1];
+                    total_green += integral_green[y1 - 1][x1 - 1];
+                    total_blue += integral_blue[y1 - 1][x1 - 1];
+                }
+
+                int neighborhood_size = (x2 - x1 + 1) * (y2 - y1 + 1);
+                blurred_image[i][j].red = total_red / neighborhood_size;
+                blurred_image[i][j].green = total_green / neighborhood_size;
+                blurred_image[i][j].blue = total_blue / neighborhood_size;
+            }
+        }
+
+        // Clean up the integral image
+        for (int i = 0; i < height; i++)
+        {
+            delete[] integral_red[i];
+            delete[] integral_green[i];
+            delete[] integral_blue[i];
+        }
+        delete[] integral_red;
+        delete[] integral_green;
+        delete[] integral_blue;
+
+        // Replace the original image with the blurred image
+        delete_image();
+        image = blurred_image;
+    }
+    else
+    {
+        raise_warning_message();
+    }
+}
+
+void ImageEdits::floydDithered()
+{
+    if (image != nullptr && type == "P3")
+    {
+        // Create a temporary image to store the dithered result
+        RGB** dithered_image = new RGB*[height];
+        for (int i = 0; i < height; i++)
+        {
+            dithered_image[i] = new RGB[width];
+        }
+
+        // Apply Floyd-Steinberg dithering
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                // Current pixel
+                RGB& current_pixel = image[i][j];
+
+                // Old pixel values
+                int old_red = current_pixel.red;
+                int old_green = current_pixel.green;
+                int old_blue = current_pixel.blue;
+
+                // New pixel values after dithering (binary thresholding)
+                int new_red = (old_red < 128) ? 0 : 255;
+                int new_green = (old_green < 128) ? 0 : 255;
+                int new_blue = (old_blue < 128) ? 0 : 255;
+
+                // Error diffusion
+                int error_red = old_red - new_red;
+                int error_green = old_green - new_green;
+                int error_blue = old_blue - new_blue;
+
+                // Update the current pixel
+                current_pixel.red = new_red;
+                current_pixel.green = new_green;
+                current_pixel.blue = new_blue;
+
+                // Diffuse the error to neighboring pixels
+                if (j < width - 1)
+                {
+                    image[i][j + 1].red += (error_red * 7) / 16;
+                    image[i][j + 1].green += (error_green * 7) / 16;
+                    image[i][j + 1].blue += (error_blue * 7) / 16;
+                }
+
+                if (i < height - 1)
+                {
+                    if (j > 0)
+                    {
+                        image[i + 1][j - 1].red += (error_red * 3) / 16;
+                        image[i + 1][j - 1].green += (error_green * 3) / 16;
+                        image[i + 1][j - 1].blue += (error_blue * 3) / 16;
+                    }
+
+                    image[i + 1][j].red += (error_red * 5) / 16;
+                    image[i + 1][j].green += (error_green * 5) / 16;
+                    image[i + 1][j].blue += (error_blue * 5) / 16;
+
+                    if (j < width - 1)
+                    {
+                        image[i + 1][j + 1].red += (error_red * 1) / 16;
+                        image[i + 1][j + 1].green += (error_green * 1) / 16;
+                        image[i + 1][j + 1].blue += (error_blue * 1) / 16;
+                    }
+                }
+            }
+        }
+
+        // Copy the dithered image to the result
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                dithered_image[i][j] = image[i][j];
+            }
+        }
+
+        // Replace the original image with the dithered image
+        delete_image();
+        image = dithered_image;
+    }
+    else
+    {
+        raise_warning_message();
+    }
+}
+
+void ImageEdits::edgeDetection()
+{
+    if (image != nullptr && type == "P3")
+    {
+        // Define Sobel kernels for horizontal and vertical edges
+        const int sobel_horizontal_kernel[3][3] = {
+            { -1, 0, 1 },
+            { -2, 0, 2 },
+            { -1, 0, 1 }
+        };
+
+        const int sobel_vertical_kernel[3][3] = {
+            { -1, -2, -1 },
+            { 0, 0, 0 },
+            { 1, 2, 1 }
+        };
+
+        // Apply Sobel edge detection directly to the original image
+        for (int i = 1; i < height - 1; i++)
+        {
+            for (int j = 1; j < width - 1; j++)
+            {
+                int gx_red = 0, gx_green = 0, gx_blue = 0;
+                int gy_red = 0, gy_green = 0, gy_blue = 0;
+
+                // Convolve the Sobel kernels with the neighborhood
+                for (int k = -1; k <= 1; k++)
+                {
+                    for (int l = -1; l <= 1; l++)
+                    {
+                        int ni = i + k;
+                        int nj = j + l;
+                        int kernel_value_h = sobel_horizontal_kernel[k + 1][l + 1];
+                        int kernel_value_v = sobel_vertical_kernel[k + 1][l + 1];
+
+                        gx_red += image[ni][nj].red * kernel_value_h;
+                        gx_green += image[ni][nj].green * kernel_value_h;
+                        gx_blue += image[ni][nj].blue * kernel_value_h;
+
+                        gy_red += image[ni][nj].red * kernel_value_v;
+                        gy_green += image[ni][nj].green * kernel_value_v;
+                        gy_blue += image[ni][nj].blue * kernel_value_v;
+                    }
+                }
+
+                // Calculate the magnitude of the gradient
+                int magnitude_red = sqrt(gx_red * gx_red + gy_red * gy_red);
+                int magnitude_green = sqrt(gx_green * gx_green + gy_green * gy_green);
+                int magnitude_blue = sqrt(gx_blue * gx_blue + gy_blue * gy_blue);
+
+                // Ensure that the magnitude is within the valid range [0, 255]
+                magnitude_red = min(255, max(0, magnitude_red));
+                magnitude_green = min(255, max(0, magnitude_green));
+                magnitude_blue = min(255, max(0, magnitude_blue));
+
+                // Set the pixel values directly in the original image
+                image[i][j].red = magnitude_red;
+                image[i][j].green = magnitude_green;
+                image[i][j].blue = magnitude_blue;
+            }
+        }
+    }
+    else
+    {
+        raise_warning_message();
+    }
+}
+
+void ImageEdits::quantize2bit()
+{
+    if (image != nullptr && type == "P3")
+    {
+        const unsigned char mask = 0xC0; // Mask to keep the 2 most significant bits (11000000)
+
+        // Apply 2-bit quantization to each color channel (red, green, blue)
+        for (int i = 0; i < height; i++)
+        {
+            for (int j = 0; j < width; j++)
+            {
+                // Quantize the red channel
+                image[i][j].red = (image[i][j].red & mask);
+
+                // Quantize the green channel
+                image[i][j].green = (image[i][j].green & mask);
+
+                // Quantize the blue channel
+                image[i][j].blue = (image[i][j].blue & mask);
+            }
+        }
+    }
+    else
+    {
+        raise_warning_message();
+    }
+}
+
+
 void ImageEdits::raise_warning_message()
 {
     cout << "Image not read properly \n";

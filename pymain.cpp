@@ -21,6 +21,9 @@ PYBIND11_MODULE(ImagePixelizer, m) {
         .def("applyfilter_green", &ImageEdits::applyfilter_green)
         .def("applyfilter_blue", &ImageEdits::applyfilter_blue)
         .def("applyfilter_grayscale", &ImageEdits::applyfilter_grayscale)
-        .def("adjust_brightness", &ImageEdits::adjust_brightness);
-        
+        .def("adjust_brightness", &ImageEdits::adjust_brightness)
+        .def("floydDithered", &ImageEdits::floydDithered)
+        .def("edgeDetection", &ImageEdits::edgeDetection)
+        .def("quantize2bit", &ImageEdits::quantize2bit)
+        .def("apply_blur", &ImageEdits::apply_blur);
 }

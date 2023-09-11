@@ -47,6 +47,10 @@ class ImageEdits
         void applyfilter_blue();
         void applyfilter_grayscale();
         void adjust_brightness(int amount);
+        void apply_blur(int amount);
+        void floydDithered();
+        void edgeDetection();
+        void quantize2bit();
         void raise_warning_message();
         RGB **image = nullptr;
 };

@@ -1,6 +1,6 @@
 # ImagePixelizer
 
-A library which performs wide range of image processing operations on Portable Pixmap (.ppm) images. It provides a versatile toolkit for manipulating and enhancing images, including operations like image resizing, flipping, applying filters, adjusting brightness, etc.
+A library which performs wide range of image processing operations on Portable Pixmap (.ppm) images. It provides a versatile toolkit for manipulating and enhancing images, including operations like image resizing, flipping, applying filters, applying blur, adjusting brightness, 2-bit Quantized Image, Floyd Steinberg Dithered Image, Sobel Edge Detection etc.
 <p align = "center">
 <img align="center" src="./output/output.jpg">
   <br>
@@ -18,7 +18,11 @@ A library which performs wide range of image processing operations on Portable P
 9. `applyfilter_green()`: Applies green filter to the image.
 10. `applyfilter_grayscale()`: Applies grayscale to the image.
 11. `adjust_brightness(amount)`: Adjusts brightness as per amount (to decrease brightness amount < 0).
-12. `write_image('name.ppm')`: Save the image with the same name provided in the argument.
+12. `apply_blur(amount)`: Apply blur as per amount.
+13. `floydDithered`: Apply Floyd-Steinberg dithering, reducing colors in an image while preserving smooth tonal transitions.
+14. `edgeDetection`: Detects and enhances edges in an image using Sobel Edge Detection, making edges more pronounced.
+15. `quantize2bit`: Reduces image color depth to 2 bits per channel, creating a simplified 2-bit quantized image.
+16. `write_image('name.ppm')`: Save the image with the same name provided in the argument.
 
 ### Usage
 ``` 
@@ -47,6 +51,10 @@ python3
 >>> x.applyfilter_grayscale()                      # To apply grayscale filter
 >>> x.set_image_path()                             # To change the image path
 >>> x.adjust_brightness(amount)                    # To adjust brightness of an image
+>>> x.apply_blur(amount)                           # To apply blur
+>>> x.floydDithered()                              # To apply Floyd-Steinberg dithering Algorithm
+>>> x.edgeDetection()                              # To detect and enhance edge
+>>> x.quantize2bit()                               # To create a simplified 2-bit quantized image
 >>> x.write_image("path/filename_to_write")        # To save the image with the name given in the argument
 ```
 ### Structure
